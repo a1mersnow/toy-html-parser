@@ -74,6 +74,26 @@ function HTMLLexicalParser (syntaxer) {
 
 
   function tagName (c) {
+    if  (c === '/') {
+      return selfClosingTag
+    }
+    if  (/[\t \f\n]/.test(c)) {
+      return beforeAttributeName
+    }
+    if (c === '>') {
+      emitToken(token)
+      return data
+    }
+    if (/[a-z][A-Z]/.test(c`)) {
+      token.name += c
+    }
+  }
+
+  function beforeAttributeName (c) {
+
+  }
+
+  function selfClosingTag (c) {
 
   }
 
