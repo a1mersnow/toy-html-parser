@@ -203,4 +203,8 @@ class EndTagToken {}
 
 class Attribute {}
 
-module.exports = HTMLLexicalParser
+module.exports = {
+  HTMLLexicalParser,
+  StartTagToken,
+  EndTagToken
+}

@@ -1,4 +1,4 @@
-const HTMLLexicalParser = require('./lexer')
+const { HTMLLexicalParser } = require('./lexer')
 
 const testHTML = `<html maaa=a >
     <head>
