@@ -7,7 +7,11 @@ function HTMLLexicalParser (syntaxer) {
   let characterReference = ''
 
   this.receiveInput = function (char) {
-    state = state(char)
+    if (state == null) {
+      throw new Error('there is an error')
+    } else {
+      state = state(char)
+    }
   }
 
   this.reset = function () {
@@ -56,20 +60,16 @@ function HTMLLexicalParser (syntaxer) {
     if (c === '/') {
       return endTagOpen
     }
-    if (/[A-Z]/.test(c)) {
-      token = new StartTagToken(c.toLowerCase())
-      return tagName
-    }
-    if (/[a-z]/.test(c)) {
-      token = new StartTagToken(c)
+    if (/[a-zA-Z]/.test(c)) {
+      token = new StartTagToken()
+      token.name = c.toLowerCase()
       return tagName
     }
     // no need to handle this
     // if (c === '?') {
     //   return bogusComment
     // }
-    error(c)
-    return data
+    return error(c)
   }
 
 
@@ -84,21 +84,108 @@ function HTMLLexicalParser (syntaxer) {
       emitToken(token)
       return data
     }
-    if (/[a-z][A-Z]/.test(c`)) {
-      token.name += c
+    if (/[a-zA-Z]/.test(c)) {
+      token.name += c.toLowerCase()
+      return tagName
     }
   }
 
   function beforeAttributeName (c) {
+    if (/[\t \f\n]/.test(c)) {
+      return beforeAttributeName
+    }
+    if (c === '/') {
+      return selfClosingTag
+    }
+    if (c === '>') {
+      emitToken(token)
+      return data
+    }
+    if (/["'<]/.test(c)) {
+      return error(c)
+    }
 
+    attribute = new Attribute()
+    attribute.name = c.toLowerCase()
+    attribute.value = ''
+    return attributeName
+  }
+
+  function attributeName (c) {
+    if (c === '/') {
+      token[attribute.name] = attribute.value
+      return selfClosingTag
+    }
+    if (c === '=') {
+      return beforeAttributeValue
+    }
+    if (/[\t \f\n]/.test(c)) {
+      return beforeAttributeName
+    }
+    attribute.name += c.toLowerCase()
+    return attributeName
+  }
+
+  function beforeAttributeValue (c) {
+    if (c === '"') {
+      return attributeValueDoubleQuoted
+    }
+    if (c === "'") {
+      return attributeValueSingleQuoted
+    }
+    if (/\t \f\n/.test(c)) {
+      return beforeAttributeValue
+    }
+    attribute.value += c
+    return attributeValueUnquoted
+  }
+
+  function attributeValueDoubleQuoted (c) {
+    if (c === '"') {
+      token[attribute.name] = attribute.value
+      return beforeAttributeName
+    }
+    attribute.value += c
+    return attributeValueDoubleQuoted
+  }
+
+  function attributeValueSingleQuoted (c) {
+    if (c === "'") {
+      token[attribute.name] = attribute.value
+      return beforeAttributeName
+    }
+    attribute.value += c
+    return attributeValueSingleQuoted
+  }
+
+  function attributeValueUnquoted (c) {
+    if (/[\t \f\n]/.test(c)) {
+      token[attribute.name] = attribute.value
+      return beforeAttributeName
+    }
+    attribute.value += c
+    return attributeValueUnquoted
   }
 
   function selfClosingTag (c) {
-
+    if (c === '>') {
+      emitToken(token)
+      endToken = new EndTagToken()
+      endToken.name = token.name
+      emitToken(endToken)
+      return data
+    }
   }
 
-  function endTagOpen () {
-
+  function endTagOpen (c) {
+    if (/[a-zA-Z]/.test(c)) {
+      token = new EndTagToken()
+      token.name = c.toLowerCase()
+      return tagName
+    }
+    if (c === '>') {
+      return error(c)
+    }
   }
 
   function emitToken (token) {
@@ -110,25 +197,10 @@ function HTMLLexicalParser (syntaxer) {
   }
 }
 
-class StartTagToken {
-  constructor (name) {
-    assert(typeof name === 'string')
-    this.name = name
-  }
-}
+class StartTagToken {}
 
-class EndTagToken {
-  constructor (name) {
-    assert(typeof name === 'string')
-    this.name = name
-  }
-}
+class EndTagToken {}
 
-class Attribute {
-  constructor (key, value) {
-    assert(typeof key === 'string', 'key should be a string')
-    assert(typeof value === 'string', 'value should be a string')
-    this.key = key
-    this.value = value
-  }
-}
+class Attribute {}
+
+module.exports = HTMLLexicalParser
